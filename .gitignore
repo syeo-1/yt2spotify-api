@@ -1,3 +1,5 @@
 winvenv
 __pycache__
 api_keys.py
+*.json
+example.py
