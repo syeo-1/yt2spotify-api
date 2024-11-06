@@ -2,7 +2,37 @@ import requests
 import base64
 import concurrent.futures
 
-from api_keys import SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET
+from api_keys import SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, YOUTUBE_API_KEY
+import re
+
+def get_playlist_videos(api_key, playlist_id):
+    url = "https://www.googleapis.com/youtube/v3/playlistItems"
+    videos = []
+    next_page_token = None
+
+    while True:
+        params = {
+            'part': 'snippet',
+            'playlistId': playlist_id,
+            'maxResults': 50,
+            'pageToken': next_page_token,
+            'key': api_key
+        }
+        response = requests.get(url, params=params)
+        data = response.json()
+        
+        # Extract video information
+        for item in data['items']:
+            video_title = item['snippet']['title']
+            video_id = item['snippet']['resourceId']['videoId']
+            videos.append({'title': video_title, 'id': video_id})
+
+        # Check if there are more pages
+        next_page_token = data.get('nextPageToken')
+        if not next_page_token:
+            break
+
+    return videos
 
 # Step 1: Function to get Spotify access token
 def get_spotify_token(client_id, client_secret):
@@ -30,6 +60,19 @@ def youtube_track_match_found_on_spotify(title, track):
             youtube_word.lower() in data['spotify_artist'].lower()):
             return True
     return False
+
+def get_video_description(video_id, api_key):
+    url = f"https://www.googleapis.com/youtube/v3/videos?part=snippet&id={video_id}&key={api_key}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        if data['items']:
+            description = data['items'][0]['snippet']['description']
+            return description
+        else:
+            return "Video not found."
+    else:
+        return f"Error: {response.status_code}"
 
 # Step 2: Function to search for a track on Spotify
 def search_spotify_track(access_token, title):
@@ -101,22 +144,38 @@ def find_multiple_tracks_concurrently(youtube_titles, client_id, client_secret):
                 
     return results
 
-# Example usage
-client_id = SPOTIFY_CLIENT_ID
-client_secret = SPOTIFY_CLIENT_SECRET
-youtube_titles = [
-    'lofty - in my head (ft. Ayeon)',
-    'Letskey - Delicate',
-    'Lofty - Caught Feelings',
-    '🍩 Donut Shop [Lofi / JazzHop / Sleepy Vibes]',
-    'A.L.I.S.O.N - Subtract',
-    "Jordy Chandra - Coffee Evening"
-]  #Replace with actual titles
-matches = find_multiple_tracks_concurrently(youtube_titles, client_id, client_secret)
 
-# Print results
-for match in matches:
-    if 'spotify_url' in match:
-        print(f"Found on Spotify: {match['youtube_title']} -> {match['spotify_title']} by {match['spotify_artist']} ({match['spotify_url']})")
-    else:
-        print(f"No match found on Spotify for: {match['youtube_title']}")
+def main():
+    lofi_video_id = 'TwWmfyKInKo'
+    lofi_video_description = get_video_description(lofi_video_id, YOUTUBE_API_KEY)
+    # print(lofi_video_description.split('\n'))
+    matches = re.findall(r'\d{2}:\d{2}\s.*', lofi_video_description)
+    # print(matches)
+    matches_tracklist = [track[6:] for track in matches]
+    print(matches_tracklist)
+    # playlist_videos = get_playlist_videos(YOUTUBE_API_KEY, 'PLE0B0LF_HjBV6_G-42PsEiVYGDhLAllfO')
+    # print(playlist_videos)
+    # exit(0)
+    # # Example usage
+    # client_id = SPOTIFY_CLIENT_ID
+    # client_secret = SPOTIFY_CLIENT_SECRET
+    # youtube_titles = [
+    #     'lofty - in my head (ft. Ayeon)',
+    #     'Letskey - Delicate',
+    #     'Lofty - Caught Feelings',
+    #     '🍩 Donut Shop [Lofi / JazzHop / Sleepy Vibes]',
+    #     'A.L.I.S.O.N - Subtract',
+    #     "Jordy Chandra - Coffee Evening"
+    # ]  #Replace with actual titles
+    # matches = find_multiple_tracks_concurrently(youtube_titles, client_id, client_secret)
+
+    # # Print results
+    # for match in matches:
+    #     if 'spotify_url' in match:
+    #         print(f"Found on Spotify: {match['youtube_title']} -> {match['spotify_title']} by {match['spotify_artist']} ({match['spotify_url']})")
+    #     else:
+    #         print(f"No match found on Spotify for: {match['youtube_title']}")
+
+
+if __name__ == '__main__':
+    main()
