@@ -167,7 +167,10 @@ def search_spotify_track(access_token, video):
     video_description = get_video_description(video['id'], YOUTUBE_API_KEY)
     compilation_tracklist = get_youtube_video_description_tracklist(video_description)
 
+    print(len(compilation_tracklist))
+
     if len(compilation_tracklist) > 0:
+        print(f'compilation detected!!')
         result_tracklist = []
         for track_title in compilation_tracklist:
             search_url = 'https://api.spotify.com/v1/search'
@@ -186,6 +189,10 @@ def search_spotify_track(access_token, video):
                 # print(track_title)
             # params = {'q': track_title, 'type': 'track', 'limit': 1}
             title_split = track_title.split(' - ')
+            if len(title_split) == 1:
+                continue
+            print('aawioeufhioawuefboiawuebfoiauweb')
+            print(title_split)
             artist = unidecode(title_split[0].lower().translate(str.maketrans('', '', string.punctuation)))
             track_name = unidecode(title_split[1].lower().translate(str.maketrans('', '', string.punctuation)))
             search_query = f'track:{track_name} artist:{artist}'
@@ -196,8 +203,6 @@ def search_spotify_track(access_token, video):
             response = requests.get(search_url, headers=headers, params=params)
             data = response.json()
             track_title_split = track_title.split(' - ')
-            if len(track_title_split) == 1:
-                continue
             only_track_title = track_title_split[1].lower()
             # print(only_track_title)
             # print(len(data['tracks']['items']))
@@ -219,7 +224,6 @@ def search_spotify_track(access_token, video):
                     print('==========')
                 # exit(0)
                 # print(f'new tracks: {tracks}')
-            print('poo')
 
             
             # print(len(tracks))
