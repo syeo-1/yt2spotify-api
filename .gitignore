@@ -3,4 +3,3 @@ __pycache__
 api_keys.py
 *.json
 example.py
-spotify_example.py
