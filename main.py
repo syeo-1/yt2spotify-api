@@ -67,11 +67,7 @@ def get_spotify_token(client_id, client_secret):
 def artist_collab_edit(youtube_artist_name):
     '''check if artist is of format <name x name>
     spotify will be of format <name, name>'''
-    # pattern = re.compile('^(\w+)[\sx\s][name\sx\s]*(\w+)$')
-    # if pattern.match(youtube_artist_name):
     return ', '.join(youtube_artist_name.split(' x '))
-    # else:
-    #     return youtube_artist_name
 
 def youtube_track_match_found_on_spotify(title, track):
     split_title = title.split('-')
@@ -86,50 +82,16 @@ def youtube_track_match_found_on_spotify(title, track):
     spotify_artist_name = unicodedata.normalize('NFC', data['spotify_artist'].lower()).replace("’", "'")
     spotify_track_name = unicodedata.normalize('NFC', data['spotify_title'].lower()).replace("’", "'")
 
-
-     
-
-    # if 'don' in spotify_track_name:
-    #     print(repr(spotify_artist_name))
-    #     print(repr(spotify_track_name))
-    #     print(repr(youtube_artist_name))
-    #     print(repr(youtube_track_name))
-
-    # youtube_artist_name = artist_collab_edit(youtube_artist_name)
-    # print(f'artist name post edit: {youtube_artist_name}')
-    # if spotify_artist_name == youtube_artist_name:
-    #     print('asdf')
-    # else:
-    #     print('diff!!')
-    # for i in range(len(spotify_artist_name)):
-    #     if spotify_artist_name[i] != youtube_artist_name[i]:
-    #         pass
-            # print(i)
-            # print(spotify_artist_name[i])
-            # print(youtube_artist_name[i])
-    # print(len(spotify_artist_name))
-    # print(len(youtube_artist_name))
-    # if spotify_track_name == youtube_track_name:
-    #     print('awrbaweb') 
-
     if (((youtube_artist_name in spotify_artist_name or spotify_artist_name in youtube_artist_name) and 
         (youtube_track_name in spotify_track_name or spotify_track_name in youtube_track_name)) or
         (youtube_track_name == spotify_track_name and youtube_artist_name == spotify_artist_name)):
-        print('awklebawjbb hehehehehe')
         return True
+
     if len(youtube_artist_name.split(', ')) > 1: # more than 1 artist
         artists = youtube_artist_name.split(', ')
         if (any(artist in spotify_artist_name for artist in artists) and
             (youtube_track_name in spotify_track_name or spotify_track_name in youtube_track_name)):
-            print('awklebawjbb blahblah')
             return True
-        
-    # if 'rook1e' in youtube_artist_name:
-    #     print('***')
-    #     print(spotify_track_name)
-    #     print(spotify_artist_name)
-    #     print(title)
-    #     print('***')
 
     return False
 
@@ -144,25 +106,14 @@ def get_youtube_video_description_tracklist(video_description):
 def get_proper_track_from_spotify_search(search_json, track_title, access_token):
     '''check for closest match in track title to returned search query result. gives back
     the index with the closest match'''
-    # if 'rook1e' in track_title:
-    #     print('0000000000')
-    #     print(search_json['tracks']['items'])
-    #     print('0000000000')
 
     tracks = search_json['tracks']['items']
-    print(f'len tracks is {len(tracks)}')
 
     for i, track in enumerate(tracks):
-        print(track['name'])
-        print(track['artists'][0]['name'])
         if youtube_track_match_found_on_spotify(track_title, track):
             return i
     return -1
 
-
-
-
-# Step 2: Function to search for a track on Spotify
 def search_spotify_track(access_token, video):
     video_description = get_video_description(video['id'], YOUTUBE_API_KEY)
     compilation_tracklist = get_youtube_video_description_tracklist(video_description)
@@ -178,67 +129,31 @@ def search_spotify_track(access_token, video):
 
             # make sure track title has the artist
             if len(track_title.split('-')) != 2:
-                # print(track_title)
                 artist = video['title'].split('-')[0]
                 track_title = artist + '- ' + track_title
 
-            print()
-
-                # print(track_title)
-            # if 'kokoro' in track_title:
-                # print(track_title)
-            # params = {'q': track_title, 'type': 'track', 'limit': 1}
             title_split = track_title.split(' - ')
             if len(title_split) == 1:
                 continue
-            print('aawioeufhioawuefboiawuebfoiauweb')
-            print(title_split)
+
             artist = unidecode(title_split[0].lower().translate(str.maketrans('', '', string.punctuation)))
             track_name = unidecode(title_split[1].lower().translate(str.maketrans('', '', string.punctuation)))
             search_query = f'track:{track_name} artist:{artist}'
-            print(search_query)
-            # params = {'q': track_title, 'type': 'track', 'limit': 20}
             params = {'q': search_query, 'type': 'track', 'limit': 20}
-            # exit(0)
             response = requests.get(search_url, headers=headers, params=params)
+
             data = response.json()
             track_title_split = track_title.split(' - ')
             only_track_title = track_title_split[1].lower()
-            # print(only_track_title)
-            # print(len(data['tracks']['items']))
-            # if len(data['tracks']['items']) == 0 or not any(only_track_title in track['name'] for track in data['tracks']['items']):
             if len(data['tracks']['items']) == 0:
                 # try searching only for the track name to at least get a more general search
-                print(f'nothing found!!! doing more general search for {track_title}')
-                # search_url = 'https://api.spotify.com/v1/search'
-                # headers = {'Authorization': f'Bearer {access_token}'}
                 only_track_title = track_title.split(' - ')[1].lower()
-                print(only_track_title)
                 params = {'q': only_track_title, 'type': 'track', 'limit': 20, 'market': None}
                 response = requests.get(search_url, headers=headers, params=params)
                 data = response.json()
-                tracks = data['tracks']['items']
-                for track in tracks:
-                    print(track['name'])
-                    print(track['artists'][0]['name'])
-                    print('==========')
-                # exit(0)
-                # print(f'new tracks: {tracks}')
 
             
-            # print(len(tracks))
-            # get the proper json piece from search query
             matching_track_index = get_proper_track_from_spotify_search(data, track_title, access_token)
-            print(f'matchin index is {matching_track_index}')
-
-            # if 'kokoro' in track_title:
-            #     print("+++++++++++++++++++")
-            #     for track in data['tracks']['items']:
-            #         filter = track['name']
-            #         # print('===')
-            #         print(filter)
-            #     print("+++++++++++++++++++")
-            #     # exit(0)
 
             if matching_track_index > -1:
                 items = data['tracks']['items']
@@ -253,11 +168,7 @@ def search_spotify_track(access_token, video):
                     }
                 )
             else:
-                # print(f'no match found on spotify for {track_title} in compilation')
-                pass
-                # print(f'compilation tracklist: {compilation_tracklist}')
-                # exit(0)
-        # print(result_tracklist)
+                print(f'no match found on spotify for {track_title} in compilation')
         return result_tracklist
     else:
         # single song
@@ -284,9 +195,6 @@ def search_spotify_track(access_token, video):
         if data['tracks']['items']:
             items = data['tracks']['items']
             track = items[0]
-            # print(items)
-            # print(data['tracks'])
-            # print(track)
             result = []
             for _ in items:
                 result.append({
@@ -298,7 +206,6 @@ def search_spotify_track(access_token, video):
             )
             print(result)
             if youtube_track_match_found_on_spotify(title, track):
-                # print('track match found on spotify!')
                 return {
                     'spotify_title': track['name'],
                     'spotify_artist': track['artists'][0]['name'],
@@ -355,46 +262,10 @@ def retrieve_playlist_json(request: Request, q: Union[str, None] = None):
     playlist_id = request.url.query.split('=')[1]
     playlist_videos = get_playlist_videos(YOUTUBE_API_KEY, playlist_id)
 
-    # http://127.0.0.1:8000/youtube/https://www.youtube.com/playlist?list=PLE0B0LF_HjBV6_G-42PsEiVYGDhLAllfO
-    
-    # then, check using the spotify api if these songs actually exist
-    # for video in playlist_videos:
-
-    # matches = find_multiple_tracks_concurrently(
-    #     [video['title'] for video in playlist_videos],
-    #     SPOTIFY_CLIENT_ID,
-    #     SPOTIFY_CLIENT_SECRET
-    # )
     matches = find_multiple_tracks_concurrently(
         playlist_videos,
         SPOTIFY_CLIENT_ID,
         SPOTIFY_CLIENT_SECRET
     )
-    # how to tell if a match is found on spotify?
-
-    # TODO: i should be checking the description first to see if it's a compilation
-    # and then trying to find the trackname on spotify!
-    # splitting the youtube title by spaces, regardless of case,
-    # two "words" in which at least one alphanumeric character must exist
-    # must match either the spotify_artist field or the spotify_title field
-        
-
-
-    # if the song doesn't exist, first check if for the link of each song
-        # if it's a self contained playlist, then use a regex to try and
-        # retrieve song names for those songs within the compilation
 
     return matches
-
-
-def main():
-    # test stuff
-
-    # request playlist videos using api key
-    playlist_id = 'PLE0B0LF_HjBV6_G-42PsEiVYGDhLAllfO'
-    playlist_videos = get_playlist_videos(YOUTUBE_API_KEY, playlist_id)
-    # print(playlist_videos)
-
-
-if __name__ == '__main__':
-    main()
