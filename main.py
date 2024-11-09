@@ -9,6 +9,7 @@ import re
 import string
 from unidecode import unidecode
 import unicodedata
+from collections import defaultdict
 
 app = FastAPI()
 
@@ -82,18 +83,43 @@ def youtube_track_match_found_on_spotify(title, track):
     spotify_artist_name = unicodedata.normalize('NFC', data['spotify_artist'].lower()).replace("’", "'")
     spotify_track_name = unicodedata.normalize('NFC', data['spotify_title'].lower()).replace("’", "'")
 
+    # print('**********************')
+    # print(youtube_artist_name)
+    # print(youtube_track_name)
+    # print(spotify_artist_name)
+    # print(spotify_track_name)
+    # print('**********************')
+
     if (((youtube_artist_name in spotify_artist_name or spotify_artist_name in youtube_artist_name) and 
         (youtube_track_name in spotify_track_name or spotify_track_name in youtube_track_name)) or
         (youtube_track_name == spotify_track_name and youtube_artist_name == spotify_artist_name)):
-        return True
+        return {
+            'track_found': True,
+            'youtube_artist_name': youtube_artist_name,
+            'youtube_track_name': youtube_track_name,
+            'spotify_artist_name': spotify_artist_name,
+            'spotify_track_name': spotify_track_name
+        }
 
     if len(youtube_artist_name.split(', ')) > 1: # more than 1 artist
         artists = youtube_artist_name.split(', ')
         if (any(artist in spotify_artist_name for artist in artists) and
             (youtube_track_name in spotify_track_name or spotify_track_name in youtube_track_name)):
-            return True
+            return {
+                'track_found': True,
+                'youtube_artist_name': youtube_artist_name,
+                'youtube_track_name': youtube_track_name,
+                'spotify_artist_name': spotify_artist_name,
+                'spotify_track_name': spotify_track_name
+            }
 
-    return False
+    return {
+        'track_found': False,
+        'youtube_artist_name': youtube_artist_name,
+        'youtube_track_name': youtube_track_name,
+        'spotify_artist_name': spotify_artist_name,
+        'spotify_track_name': spotify_track_name
+    }
 
 def get_youtube_video_description_tracklist(video_description):
     matches = re.findall(r'\[?\d{1,2}:\d{2}\]?\s.*', video_description)
@@ -109,10 +135,27 @@ def get_proper_track_from_spotify_search(search_json, track_title, access_token)
 
     tracks = search_json['tracks']['items']
 
+    not_found_search_result = {
+        'youtube_artist_names': [],
+        'youtube_track_names': [],
+        'spotify_artist_names': [],
+        'spotify_track_names': []
+    }
+
     for i, track in enumerate(tracks):
-        if youtube_track_match_found_on_spotify(track_title, track):
-            return i
-    return -1
+        search_results = youtube_track_match_found_on_spotify(track_title, track)
+
+        not_found_search_result['youtube_artist_names'].append(search_results['youtube_artist_name'])
+        not_found_search_result['youtube_track_names'].append(search_results['youtube_track_name'])
+        not_found_search_result['spotify_artist_names'].append(search_results['spotify_artist_name'])
+        not_found_search_result['spotify_track_names'].append(search_results['spotify_track_name'])
+
+        if search_results['track_found']:
+            search_results['match_index'] = i
+            return search_results
+    
+    not_found_search_result['match_index'] = -1
+    return not_found_search_result
 
 def search_spotify_track(access_token, video):
     video_description = get_video_description(video['id'], YOUTUBE_API_KEY)
@@ -153,7 +196,8 @@ def search_spotify_track(access_token, video):
                 data = response.json()
 
             
-            matching_track_index = get_proper_track_from_spotify_search(data, track_title, access_token)
+            search_results = get_proper_track_from_spotify_search(data, track_title, access_token)
+            matching_track_index = search_results['match_index']
 
             if matching_track_index > -1:
                 items = data['tracks']['items']
@@ -169,6 +213,16 @@ def search_spotify_track(access_token, video):
                 )
             else:
                 print(f'no match found on spotify for {track_title} in compilation')
+                # remove match_index key otherwise will get an error
+                search_results.pop('match_index', None)
+
+                # print out first 5 results to check
+                for i in range(5):
+                    matchup = []
+                    for k in search_results:
+                        matchup.append(search_results[k][i])
+                    print(matchup)
+
         return result_tracklist
     else:
         # single song
